@@ -21,19 +21,18 @@
 namespace Fusio\Adapter\Http\Action;
 
 use Composer\InstalledVersions;
+use Doctrine\Common\Cache\PredisCache;
 use Fusio\Adapter\Http\RequestConfig;
 use Fusio\Engine\ActionAbstract;
 use Fusio\Engine\ContextInterface;
 use Fusio\Engine\ParametersInterface;
-use Fusio\Engine\Request\HttpRequestContext;
-use Fusio\Engine\Request\RequestContextInterface;
 use Fusio\Engine\RequestInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
 use Kevinrob\GuzzleCache\CacheMiddleware;
-use Kevinrob\GuzzleCache\Storage\Psr16CacheStorage;
+use Kevinrob\GuzzleCache\Storage\DoctrineCacheStorage;
 use Kevinrob\GuzzleCache\Strategy\PrivateCacheStrategy;
-use Psr\Http\Message\ResponseInterface;
+use Predis\Client as PredisClient;
 use PSX\Http\Environment\HttpResponseInterface;
 use PSX\Http\MediaType;
 use PSX\Record\Transformer;
@@ -127,7 +126,19 @@ abstract class HttpSenderAbstract extends ActionAbstract
         $guzzleOptions = [];
         if ($config->shouldCache()) {
             $stack = HandlerStack::create();
-            $stack->push(new CacheMiddleware(new PrivateCacheStrategy(new Psr16CacheStorage($this->cache))), 'cache');
+//            $stack->push(new CacheMiddleware(new PrivateCacheStrategy(new Psr16CacheStorage($this->cache))), 'cache');
+            $stack->push(
+                new CacheMiddleware(
+                    new PrivateCacheStrategy(
+                        new DoctrineCacheStorage(
+                            new PredisCache(
+                                new PredisClient([
+                                    'scheme' => 'tcp',
+                                    'host' => 'localhost',
+                                    'port' => 6379,
+                                    'prefix' => 'fusio',
+                                ])
+                            )))), 'cache');
             $guzzleOptions['handler'] = $stack;
         }
 
@@ -144,7 +155,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
             }
         }
 
-        $body = (string) $response->getBody();
+        $body = (string)$response->getBody();
 
         if ($this->isJson($contentType)) {
             $data = json_decode($body);
