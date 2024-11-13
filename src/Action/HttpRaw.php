@@ -105,7 +105,7 @@ class HttpRaw extends HttpSenderAbstract
         return [
             $configuration->get('method'),
             $requestContext instanceof HttpRequestContext ? $requestContext->getParameters() : [],
-            $config->getQuery(),
+            $templateContext['query'] ?? [],
             $headers,
             $twig->render('body', $templateContext)
         ];
