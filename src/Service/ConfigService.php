@@ -6,7 +6,7 @@ use Symfony\Component\Dotenv\Dotenv;
 
 class ConfigService
 {
-    private static ?Dotenv $dotenv;
+    private static ?Dotenv $dotenv = null;
     public static function enval(string $key, mixed $defaultValue): mixed
     {
         if (isset($_ENV[$key])) {
