@@ -23,6 +23,7 @@ namespace Fusio\Adapter\Http\Action;
 use Composer\InstalledVersions;
 use Doctrine\Common\Cache\PredisCache;
 use Fusio\Adapter\Http\RequestConfig;
+use Fusio\Adapter\Http\Service\ConfigService;
 use Fusio\Engine\ActionAbstract;
 use Fusio\Engine\ContextInterface;
 use Fusio\Engine\ParametersInterface;
@@ -133,10 +134,10 @@ abstract class HttpSenderAbstract extends ActionAbstract
                         new DoctrineCacheStorage(
                             new PredisCache(
                                 new PredisClient([
-                                    'scheme' => 'tcp',
-                                    'host' => 'localhost',
-                                    'port' => 6379,
-                                    'prefix' => 'fusio',
+                                    'scheme' => ConfigService::enval('REDIS_SCHEME', 'tcp'),
+                                    'host' => ConfigService::enval('REDIS_HOST', 'localhost'),
+                                    'port' => ConfigService::enval('REDIS_PORT', 6379),
+                                    'prefix' => ConfigService::enval('REDIS_PREFIX', ''),
                                 ])
                             )))), 'cache');
             $guzzleOptions['handler'] = $stack;

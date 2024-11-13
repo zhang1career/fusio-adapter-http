@@ -17,6 +17,7 @@
     "guzzlehttp/guzzle": "^7.0",
     "kevinrob/guzzle-cache-middleware": "^5.1",
     "twig/twig": "^3.0",
+    "symfony/dotenv": "^7.1",
     "predis/predis": "^2.1",
     "doctrine/cache": "^1.13"
   },
