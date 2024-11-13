@@ -127,7 +127,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
         $guzzleOptions = [];
         if ($config->shouldCache()) {
             $stack = HandlerStack::create();
-//            $stack->push(new CacheMiddleware(new PrivateCacheStrategy(new Psr16CacheStorage($this->cache))), 'cache');
+//          $stack->push(new CacheMiddleware(new PrivateCacheStrategy(new Psr16CacheStorage($this->cache))), 'cache');
             $stack->push(
                 new CacheMiddleware(
                     new PrivateCacheStrategy(
@@ -137,7 +137,8 @@ abstract class HttpSenderAbstract extends ActionAbstract
                                     'scheme' => ConfigService::enval('REDIS_SCHEME', 'tcp'),
                                     'host' => ConfigService::enval('REDIS_HOST', 'localhost'),
                                     'port' => ConfigService::enval('REDIS_PORT', 6379),
-                                    'prefix' => ConfigService::enval('REDIS_PREFIX', ''),
+                                ], [
+                                    'prefix' => ConfigService::enval('REDIS_PREFIX'.'http:', ''),
                                 ])
                             )))), 'cache');
             $guzzleOptions['handler'] = $stack;
