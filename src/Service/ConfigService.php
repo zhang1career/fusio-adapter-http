@@ -14,7 +14,7 @@ class ConfigService
         }
         if (self::$dotenv === null) {
             self::$dotenv = new Dotenv();
-            self::$dotenv->load(dirname(__FILE__).'../../../../../.env');
+            self::$dotenv->load(dirname(__FILE__).'/../../../../../.env');
         }
 
         return $_ENV[$key] ?? $defaultValue;

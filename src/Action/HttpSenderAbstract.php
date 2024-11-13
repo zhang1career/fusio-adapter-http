@@ -138,7 +138,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
                                     'host' => ConfigService::enval('REDIS_HOST', 'localhost'),
                                     'port' => ConfigService::enval('REDIS_PORT', 6379),
                                 ], [
-                                    'prefix' => ConfigService::enval('REDIS_PREFIX'.'http:', ''),
+                                    'prefix' => ConfigService::enval('REDIS_PREFIX', '').'http:',
                                 ])
                             )))), 'cache');
             $guzzleOptions['handler'] = $stack;
