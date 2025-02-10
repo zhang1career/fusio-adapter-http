@@ -21,6 +21,7 @@
 namespace Fusio\Adapter\Http\Action;
 
 use Fusio\Adapter\Http\RequestConfig;
+use Fusio\Adapter\Http\Service\ConfigService;
 use Fusio\Engine\ConfigurableInterface;
 use Fusio\Engine\ContextInterface;
 use Fusio\Engine\Exception\ConfigurationException;
@@ -54,6 +55,14 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         $url = $urls[array_rand($urls)] ?? null;
         if (empty($url)) {
             throw new ConfigurationException('No fitting url configured');
+        }
+
+        // url can contain placeholders which are replaced with the environment variables
+        // e.g. {{BASE_URL}}
+        $pattern = '/\{\{([a-zA-Z_\-]*)\}\}/';
+        if (preg_match($pattern, $url, $match)) {
+            $key = $match[1];
+            $url = str_replace('{{' . $key . '}}', ConfigService::enval($key, $key), $url);
         }
 
         return $this->send(
