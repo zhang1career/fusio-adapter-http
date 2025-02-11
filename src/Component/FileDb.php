@@ -48,26 +48,22 @@ class FileDb
             }
             // add to dictionary
             $key = $parts[0];
-            // split values by comma
-            $values = explode(",", $parts[1]);
-
-            $this->dict[$key] = $values;
+            $value = $parts[1];
+            $this->dict[$key] = $value;
         }
 
         fclose($dataFile);
     }
 
     /**
-     * Randomly select a value from the dictionary
      * @param string $key
-     * @return mixed|string
+     * @return string
      */
-    public function queryRandom(string $key): mixed
+    public function query(string $key): mixed
     {
         if (!$this->dict || !isset($this->dict[$key])) {
             return "";
         }
-        $values = $this->dict[$key];
-        return $values[array_rand($values)];
+        return $this->dict[$key];
     }
 }

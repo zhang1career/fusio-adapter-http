@@ -43,17 +43,6 @@ use PSX\Http\Environment\HttpResponseInterface;
  */
 class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterface
 {
-    private FileDb $serviceDiscoveryDb;
-
-    /**
-     * @throws NotFoundException
-     */
-    public function __construct(RuntimeInterface $runtime)
-    {
-        parent::__construct($runtime);
-        $this->serviceDiscoveryDb = new FileDb(ConfigService::enval('SERVICE_DISCOVERY_DB_PATH', ''));
-    }
-
     public function getName(): string
     {
         return 'HTTP-Load-Balancer';
@@ -91,6 +80,36 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         );
     }
 
+
+    /**
+     * Query the service-uri by service-name
+     * @param string $serviceName
+     * @return mixed
+     * @throws ConfigurationException
+     */
+    private function queryServiceUri(string $serviceName): mixed
+    {
+        $serviceUries = $this->serviceRegisterCache->get($serviceName);
+        // if cached
+        if (!empty($serviceUries)) {
+            $serviceUriList = explode(",", $serviceUries);
+            if (empty($serviceUriList)) {
+                throw new ConfigurationException('Empty parsed from service register: ' . $serviceUries);
+            }
+            return $serviceUriList[array_rand($serviceUriList)];
+        }
+        // if not cached, query database
+        $serviceUries = $this->serviceRegisterDb->query($serviceName);
+        if (empty($serviceUries)) {
+            throw new ConfigurationException('No data found from database: ' . $serviceName);
+        }
+        $serviceUriList = explode(",", $serviceUries);
+        if (empty($serviceUriList)) {
+            throw new ConfigurationException('Empty parsed from database: ' . $serviceUries);
+        }
+        return $serviceUriList[array_rand($serviceUriList)];
+    }
+
     public function configure(BuilderInterface $builder, ElementFactoryInterface $elementFactory): void
     {
         $builder->add($elementFactory->newCollection('url', 'URL', 'Multiple urls which are called randomly for load balancing'));
@@ -99,22 +118,5 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         $builder->add($elementFactory->newInput('authorization', 'Authorization', 'text', 'Optional a HTTP authorization header which gets passed to the endpoint.'));
         $builder->add($elementFactory->newInput('query', 'Query', 'text', 'Optional fix query parameters which are attached to the url.'));
         $builder->add($elementFactory->newSelect('cache', 'Cache', self::CACHE, 'Optional consider HTTP cache headers.'));
-    }
-
-    /**
-     * Query the service-uri by service-name
-     * If the key is not available in the database an exception is thrown
-     * @param string $serviceName
-     * @return mixed
-     * @throws ConfigurationException
-     */
-    public function queryServiceUri(string $serviceName): mixed
-    {
-        // query environment variable first, if not available query the service discovery database
-        $value = ConfigService::enval($serviceName, $this->serviceDiscoveryDb->queryRandom($serviceName));
-        if (empty($value)) {
-            throw new ConfigurationException('No fitting url configured');
-        }
-        return $value;
     }
 }
