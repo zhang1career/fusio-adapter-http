@@ -22,9 +22,12 @@ namespace Fusio\Adapter\Http\Action;
 
 use Fusio\Adapter\Http\RequestConfig;
 use Fusio\Adapter\Http\Service\ConfigService;
+use Fusio\Adapter\Http\Component\FileDb;
+use Fusio\Engine\Action\RuntimeInterface;
 use Fusio\Engine\ConfigurableInterface;
 use Fusio\Engine\ContextInterface;
 use Fusio\Engine\Exception\ConfigurationException;
+use Fusio\Engine\Exception\NotFoundException;
 use Fusio\Engine\Form\BuilderInterface;
 use Fusio\Engine\Form\ElementFactoryInterface;
 use Fusio\Engine\ParametersInterface;
@@ -40,11 +43,25 @@ use PSX\Http\Environment\HttpResponseInterface;
  */
 class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterface
 {
+    private FileDb $serviceDiscoveryDb;
+
+    /**
+     * @throws NotFoundException
+     */
+    public function __construct(RuntimeInterface $runtime)
+    {
+        parent::__construct($runtime);
+        $this->serviceDiscoveryDb = new FileDb(ConfigService::enval('SERVICE_DISCOVERY_DB_PATH', ''));
+    }
+
     public function getName(): string
     {
         return 'HTTP-Load-Balancer';
     }
 
+    /**
+     * @throws ConfigurationException
+     */
     public function handle(RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): HttpResponseInterface
     {
         $urls = $configuration->get('url');
@@ -62,7 +79,8 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         $pattern = '/\{\{([a-zA-Z_\-]*)\}\}/';
         if (preg_match($pattern, $url, $match)) {
             $key = $match[1];
-            $url = str_replace('{{' . $key . '}}', ConfigService::enval($key, $key), $url);
+            $value = $this->queryServiceUri($key);
+            $url = str_replace('{{' . $key . '}}', $value, $url);
         }
 
         return $this->send(
@@ -81,5 +99,22 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         $builder->add($elementFactory->newInput('authorization', 'Authorization', 'text', 'Optional a HTTP authorization header which gets passed to the endpoint.'));
         $builder->add($elementFactory->newInput('query', 'Query', 'text', 'Optional fix query parameters which are attached to the url.'));
         $builder->add($elementFactory->newSelect('cache', 'Cache', self::CACHE, 'Optional consider HTTP cache headers.'));
+    }
+
+    /**
+     * Query the service-uri by service-name
+     * If the key is not available in the database an exception is thrown
+     * @param string $serviceName
+     * @return mixed
+     * @throws ConfigurationException
+     */
+    public function queryServiceUri(string $serviceName): mixed
+    {
+        // query environment variable first, if not available query the service discovery database
+        $value = ConfigService::enval($serviceName, $this->serviceDiscoveryDb->queryRandom($serviceName));
+        if (empty($value)) {
+            throw new ConfigurationException('No fitting url configured');
+        }
+        return $value;
     }
 }
