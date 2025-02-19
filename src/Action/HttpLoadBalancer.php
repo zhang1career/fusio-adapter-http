@@ -21,13 +21,9 @@
 namespace Fusio\Adapter\Http\Action;
 
 use Fusio\Adapter\Http\RequestConfig;
-use Fusio\Adapter\Http\Service\ConfigService;
-use Fusio\Adapter\Http\Component\FileDb;
-use Fusio\Engine\Action\RuntimeInterface;
 use Fusio\Engine\ConfigurableInterface;
 use Fusio\Engine\ContextInterface;
 use Fusio\Engine\Exception\ConfigurationException;
-use Fusio\Engine\Exception\NotFoundException;
 use Fusio\Engine\Form\BuilderInterface;
 use Fusio\Engine\Form\ElementFactoryInterface;
 use Fusio\Engine\ParametersInterface;
@@ -64,8 +60,9 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         }
 
         // url can contain placeholders which are replaced with the environment variables
+        // 1. uri
         // e.g. http://{{BASE_URL}} -> http://api.example.com
-        $pattern = '/:\/\/\{\{([a-zA-Z_\-]*)\}\}/';
+        $pattern = '/://{{([a-zA-Z0-9_\-]*)}}/';
         if (preg_match($pattern, $url, $match)) {
             $key = $match[1];
             $value = $this->queryServiceUri($key);

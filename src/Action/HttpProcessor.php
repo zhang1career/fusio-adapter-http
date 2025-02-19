@@ -44,11 +44,41 @@ class HttpProcessor extends HttpProxyAbstract implements ConfigurableInterface
         return 'HTTP-Processor';
     }
 
+    /**
+     * @throws ConfigurationException
+     */
     public function handle(RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): HttpResponseInterface
     {
         $url = $configuration->get('url');
         if (empty($url)) {
             throw new ConfigurationException('No url configured');
+        }
+
+        // url can contain placeholders which are replaced with the environment variables
+        // 1. uri
+        // e.g. http://{{BASE_URL}} -> http://api.example.com
+
+        // 2. path parameter
+        // e.g. http://api.example.com/{{PARAM_1}}//{{PARAM_2}} -> http://api.example.com/foo/bar
+        $pattern = '/{{([a-zA-Z0-9_\-]*)}}/';
+        $argumentDict = $request->getArguments();
+        if ($argumentDict) {
+            if (preg_match_all($pattern, $url, $matches)) {
+                foreach ($matches[1] as $key) {
+                    if (!isset($argumentDict[$key])) {
+                        continue;
+                    }
+                    $value = $argumentDict[$key];
+                    $url = str_replace('{{' . $key . '}}', $value, $url);
+                }
+            }
+        }
+
+        # post process the url
+        $originUrl = $request->getContext()->getRequest()->getUri()->getPath();
+        # remove tailing '/' from the url
+        if (!str_ends_with($originUrl, '/') && str_ends_with($url, '/')) {
+            $url = substr($url, 0, -1);
         }
 
         return $this->send(
