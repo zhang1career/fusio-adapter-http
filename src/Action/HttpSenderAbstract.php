@@ -22,13 +22,10 @@ namespace Fusio\Adapter\Http\Action;
 
 use Composer\InstalledVersions;
 use Doctrine\Common\Cache\PredisCache;
-use Fusio\Adapter\Http\Component\FileDb;
 use Fusio\Adapter\Http\RequestConfig;
 use Fusio\Adapter\Http\Service\ConfigService;
-use Fusio\Engine\Action\RuntimeInterface;
 use Fusio\Engine\ActionAbstract;
 use Fusio\Engine\ContextInterface;
-use Fusio\Engine\Exception\NotFoundException;
 use Fusio\Engine\ParametersInterface;
 use Fusio\Engine\RequestInterface;
 use GuzzleHttp\Client;
@@ -86,27 +83,6 @@ abstract class HttpSenderAbstract extends ActionAbstract
         'transfer-encoding',
         'upgrade',
     ];
-
-    protected ?PredisClient $serviceRegisterCache = null;
-
-    protected ?FileDb $serviceRegisterDb = null;
-
-    /**
-     * @param RuntimeInterface $runtime
-     * @throws NotFoundException
-     */
-    public function __construct(RuntimeInterface $runtime)
-    {
-        parent::__construct($runtime);
-        $this->serviceRegisterCache = new PredisClient([
-            'scheme' => ConfigService::enval('REDIS_SCHEME', 'tcp'),
-            'host' => ConfigService::enval('REDIS_HOST', 'localhost'),
-            'port' => ConfigService::enval('REDIS_PORT', 6379),
-        ], [
-            'prefix' => ConfigService::enval('REDIS_PREFIX_REGISTER_SERVICE', ''),
-        ]);
-        $this->serviceRegisterDb = new FileDb(ConfigService::enval('REGISTER_SERVICE_DB', ''));
-    }
 
     private ?Client $client = null;
 

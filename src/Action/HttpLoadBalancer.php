@@ -20,6 +20,7 @@
 
 namespace Fusio\Adapter\Http\Action;
 
+use Fusio\Adapter\Http\Component\ArgumentHelper;
 use Fusio\Adapter\Http\RequestConfig;
 use Fusio\Engine\ConfigurableInterface;
 use Fusio\Engine\ContextInterface;
@@ -59,15 +60,7 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
             throw new ConfigurationException('No fitting url configured');
         }
 
-        // url can contain placeholders which are replaced with the environment variables
-        // 1. uri
-        // e.g. http://{{BASE_URL}} -> http://api.example.com
-        $pattern = '/:\/\/\{\{([a-zA-Z0-9_\-]*)\}\}/';
-        if (preg_match($pattern, $url, $match)) {
-            $key = $match[1];
-            $value = $this->queryServiceUri($key);
-            $url = str_replace('{{' . $key . '}}', $value, $url);
-        }
+        $url = ArgumentHelper::specifyArguments($url, $request);
 
         return $this->send(
             RequestConfig::forProxy($url, $configuration),
@@ -75,36 +68,6 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
             $configuration,
             $context
         );
-    }
-
-
-    /**
-     * Query the service-uri by service-name
-     * @param string $serviceName
-     * @return mixed
-     * @throws ConfigurationException
-     */
-    private function queryServiceUri(string $serviceName): mixed
-    {
-        $serviceUries = $this->serviceRegisterCache->get($serviceName);
-        // if cached
-        if (!empty($serviceUries)) {
-            $serviceUriList = explode(",", $serviceUries);
-            if (empty($serviceUriList)) {
-                throw new ConfigurationException('Empty parsed from service register: ' . $serviceUries);
-            }
-            return $serviceUriList[array_rand($serviceUriList)];
-        }
-        // if not cached, query database
-        $serviceUries = $this->serviceRegisterDb->query($serviceName);
-        if (empty($serviceUries)) {
-            throw new ConfigurationException('No data found from database: ' . $serviceName);
-        }
-        $serviceUriList = explode(",", $serviceUries);
-        if (empty($serviceUriList)) {
-            throw new ConfigurationException('Empty parsed from database: ' . $serviceUries);
-        }
-        return $serviceUriList[array_rand($serviceUriList)];
     }
 
     public function configure(BuilderInterface $builder, ElementFactoryInterface $elementFactory): void
