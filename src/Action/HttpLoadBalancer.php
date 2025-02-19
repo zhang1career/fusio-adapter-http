@@ -62,7 +62,7 @@ class HttpLoadBalancer extends HttpProxyAbstract implements ConfigurableInterfac
         // url can contain placeholders which are replaced with the environment variables
         // 1. uri
         // e.g. http://{{BASE_URL}} -> http://api.example.com
-        $pattern = '/://{{([a-zA-Z0-9_\-]*)}}/';
+        $pattern = '/:\/\/\{\{([a-zA-Z0-9_\-]*)\}\}/';
         if (preg_match($pattern, $url, $match)) {
             $key = $match[1];
             $value = $this->queryServiceUri($key);
