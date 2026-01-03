@@ -52,35 +52,36 @@ class ServiceRegister
         $serviceUries = $this->cache->get($serviceName);
         // if cached
         if (!empty($serviceUries)) {
-            $serviceUriList = explode(",", $serviceUries);
-            // remove empty elements
-            foreach ($serviceUriList as $_k => $_v) {
-                if (!strlen($_v)) {
-                    unset($serviceUriList[$_k]);
-                }
-            }
-            // if empty after removing empty elements
-            if (empty($serviceUriList)) {
-                throw new ConfigurationException('Empty parsed from service register: ' . $serviceUries);
-            }
-            return $serviceUriList[array_rand($serviceUriList)];
+            return $this->pickServiceUriFromString($serviceUries);
         }
         // if not cached, query database
         $serviceUries = $this->db->query($serviceName);
         if (empty($serviceUries)) {
             throw new ConfigurationException('No data found from database: ' . $serviceName);
         }
-        $serviceUriList = explode(",", $serviceUries);
-        // remove empty elements
-        foreach ($serviceUriList as $_k => $_v) {
-            if (!strlen($_v)) {
-                unset($serviceUriList[$_k]);
-            }
-        }
-        // if empty after removing empty elements
+        return $this->pickServiceUriFromString($serviceUries);
+    }
+
+    /**
+     * Parse a comma-separated list of service uris, remove empty entries and return one random uri.
+     * Throws ConfigurationException if the resulting list is empty.
+     *
+     * @param string $serviceUries
+     * @return string
+     * @throws ConfigurationException
+     */
+    private function pickServiceUriFromString(string $serviceUries): string
+    {
+        $serviceUriList = explode(',', $serviceUries);
+        // remove empty elements and trim values
+        $serviceUriList = array_values(array_filter(array_map('trim', $serviceUriList), function (string $v): bool {
+            return $v !== '';
+        }));
+
         if (empty($serviceUriList)) {
-            throw new ConfigurationException('Empty parsed from database: ' . $serviceUries);
+            throw new ConfigurationException('Empty from parsing: ' . $serviceUries);
         }
+
         return $serviceUriList[array_rand($serviceUriList)];
     }
 }

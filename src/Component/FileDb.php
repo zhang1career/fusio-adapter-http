@@ -22,10 +22,21 @@ class FileDb
     public function __construct(string $dataPath)
     {
         // check arguments
-        if (empty($dataPath) || !file_exists($dataPath) || !is_readable($dataPath)) {
+        if (empty($dataPath)) {
+            throw new NotFoundException('No data-file path provided');
+        }
+
+        $this->dataPath = $dataPath;
+
+        // if file doesn't exist, try to create it (and parent directory)
+        if (!file_exists($this->dataPath)) {
+            $this->createDataFile($this->dataPath);
+        }
+
+        // ensure file is readable
+        if (!is_readable($this->dataPath)) {
             throw new NotFoundException('No readable data-file found');
         }
-        $this->dataPath = $dataPath;
 
         // read data file
         $dataFile = fopen($this->dataPath, "r");
@@ -53,6 +64,29 @@ class FileDb
         }
 
         fclose($dataFile);
+    }
+
+    /**
+     * Create the data file and parent directories if needed.
+     * Extracted to a protected method to allow overriding in tests.
+     *
+     * @param string $path
+     * @throws NotFoundException
+     */
+    protected function createDataFile(string $path): void
+    {
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            if (!mkdir($dir, 0777, true) && !is_dir($dir)) {
+                throw new NotFoundException('Unable to create directory for data-file: ' . $dir);
+            }
+        }
+
+        $handle = @fopen($path, 'w');
+        if ($handle === false) {
+            throw new NotFoundException('Unable to create data-file: ' . $path);
+        }
+        fclose($handle);
     }
 
     /**
