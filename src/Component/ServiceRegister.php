@@ -4,7 +4,6 @@ namespace Fusio\Adapter\Http\Component;
 
 use Fusio\Adapter\Http\Service\ConfigService;
 use Fusio\Engine\Exception\ConfigurationException;
-use Fusio\Engine\Exception\NotFoundException;
 use Predis\Client as PredisClient;
 
 class ServiceRegister
@@ -20,13 +19,10 @@ class ServiceRegister
         return self::$instance;
     }
 
-
     private PredisClient $cache;
 
-    private FileDb $db;
-
     /**
-     * @throws NotFoundException
+     * @throws ConfigurationException
      */
     private function __construct()
     {
@@ -37,8 +33,6 @@ class ServiceRegister
         ], [
             'prefix' => ConfigService::enval('REDIS_PREFIX_REGISTER_SERVICE', ''),
         ]);
-
-        $this->db = new FileDb(ConfigService::enval('REGISTER_SERVICE_DB', ''));
     }
 
     /**
@@ -51,13 +45,8 @@ class ServiceRegister
     {
         $serviceUries = $this->cache->get($serviceName);
         // if cached
-        if (!empty($serviceUries)) {
-            return $this->pickServiceUriFromString($serviceUries);
-        }
-        // if not cached, query database
-        $serviceUries = $this->db->query($serviceName);
         if (empty($serviceUries)) {
-            throw new ConfigurationException('No data found from database: ' . $serviceName);
+            throw new ConfigurationException('No data found for service: ' . $serviceName);
         }
         return $this->pickServiceUriFromString($serviceUries);
     }
