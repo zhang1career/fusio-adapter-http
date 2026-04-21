@@ -21,6 +21,7 @@
 namespace Fusio\Adapter\Http\Action;
 
 use Fusio\Adapter\Http\RequestConfig;
+use Fusio\Engine\ContextInterface;
 use Fusio\Engine\ParametersInterface;
 use Fusio\Engine\Request\HttpRequestContext;
 use Fusio\Engine\RequestInterface;
@@ -34,7 +35,10 @@ use Fusio\Engine\RequestInterface;
  */
 abstract class HttpProxyAbstract extends HttpSenderAbstract
 {
-    protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration): array
+    /** fusio_operation.usability column: 1 = external (match impl / OperationTable::USABILITY_EXTERNAL) */
+    private const USABILITY_EXTERNAL = 1;
+
+    protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): array
     {
         $requestContext = $request->getContext();
         if ($requestContext instanceof HttpRequestContext) {
@@ -45,7 +49,10 @@ abstract class HttpProxyAbstract extends HttpSenderAbstract
 
             $authorization = $config->getAuthorization();
             $proxyAuthorization = $httpRequest->getHeader('Proxy-Authorization');
-            if (!empty($authorization)) {
+            $clientAuthorization = $httpRequest->getHeader('Authorization');
+            if ($this->isOperationUsabilityExternal($context) && $clientAuthorization !== '') {
+                $headers['authorization'] = $clientAuthorization;
+            } elseif (!empty($authorization)) {
                 $headers['authorization'] = $authorization;
             } elseif (!empty($proxyAuthorization)) {
                 $headers['authorization'] = $proxyAuthorization;
@@ -72,5 +79,25 @@ abstract class HttpProxyAbstract extends HttpSenderAbstract
                 $request->getPayload(),
             ];
         }
+    }
+
+    private function isOperationUsabilityExternal(ContextInterface $context): bool
+    {
+        if (!method_exists($context, 'getOperation')) {
+            return false;
+        }
+
+        $operation = $context->getOperation();
+        if ($operation === null) {
+            return false;
+        }
+
+        if (is_object($operation) && method_exists($operation, 'getUsability')) {
+            $usability = $operation->getUsability();
+
+            return $usability === self::USABILITY_EXTERNAL;
+        }
+
+        return false;
     }
 }

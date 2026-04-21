@@ -452,7 +452,7 @@ abstract class HttpActionTestCase extends HttpTestCase
         return '<foo>response</foo>';
     }
 
-    private function getXHeaders(array $headers): array
+    protected function getXHeaders(array $headers): array
     {
         $result = [];
         foreach ($headers as $name => $header) {

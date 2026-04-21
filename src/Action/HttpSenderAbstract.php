@@ -29,7 +29,10 @@ use Fusio\Engine\ContextInterface;
 use Fusio\Engine\ParametersInterface;
 use Fusio\Engine\RequestInterface;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\HandlerStack;
+use InvalidArgumentException;
+use JsonSerializable;
 use Kevinrob\GuzzleCache\CacheMiddleware;
 use Kevinrob\GuzzleCache\Storage\DoctrineCacheStorage;
 use Kevinrob\GuzzleCache\Strategy\PrivateCacheStrategy;
@@ -91,11 +94,14 @@ abstract class HttpSenderAbstract extends ActionAbstract
         $this->client = $client;
     }
 
+    /**
+     * @throws GuzzleException
+     */
     public function send(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): HttpResponseInterface
     {
         $clientIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
-        [$method, $uriFragments, $query, $headers, $payload] = $this->getRequestValues($config, $request, $configuration);
+        [$method, $uriFragments, $query, $headers, $payload] = $this->getRequestValues($config, $request, $configuration, $context);
 
         $headers['x-fusio-operation-id'] = '' . $context->getOperationId();
         $headers['x-fusio-user-anonymous'] = $context->getUser()->isAnonymous() ? '1' : '0';
@@ -148,6 +154,8 @@ abstract class HttpSenderAbstract extends ActionAbstract
         $response = $client->request($method, $url, $options);
 
         $contentType = $response->getHeaderLine('Content-Type');
+        $body = (string)$response->getBody();
+
         $response = $response->withoutHeader('Content-Type');
         $response = $response->withoutHeader('Content-Length');
 
@@ -157,18 +165,15 @@ abstract class HttpSenderAbstract extends ActionAbstract
             }
         }
 
-        $body = (string)$response->getBody();
-
         if ($this->isJson($contentType)) {
-            $data = json_decode($body);
-        } elseif (str_contains($contentType, self::TYPE_FORM)) {
+            $data = json_decode($body, true);
+        } elseif (str_contains($contentType ?? '', self::TYPE_FORM)) {
             $data = [];
             parse_str($body, $data);
         } else {
             if (!empty($contentType)) {
                 $response = $response->withHeader('Content-Type', $contentType);
             }
-
             $data = $body;
         }
 
@@ -179,7 +184,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
         );
     }
 
-    abstract protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration): array;
+    abstract protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): array;
 
     private function getRequestOptions(RequestConfig $config, array $headers, ?array $query, mixed $payload): array
     {
@@ -200,7 +205,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
         }
 
         if ($config->getType() == self::TYPE_FORM) {
-            $options['form_params'] = $payload instanceof \JsonSerializable ? Transformer::toArray($payload) : null;
+            $options['form_params'] = $payload instanceof JsonSerializable ? Transformer::toArray($payload) : null;
         } elseif ($config->getType() == self::TYPE_BINARY) {
             $options['body'] = $payload;
         } else {
@@ -215,10 +220,11 @@ abstract class HttpSenderAbstract extends ActionAbstract
         if (!empty($contentType)) {
             try {
                 return MediaType\Json::isMediaType(MediaType::parse($contentType));
-            } catch (\InvalidArgumentException $e) {
+            } catch (InvalidArgumentException $e) {
             }
         }
 
         return false;
     }
+
 }

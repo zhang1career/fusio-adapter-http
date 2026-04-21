@@ -4,6 +4,7 @@ namespace Fusio\Adapter\Http\Component;
 
 use Fusio\Adapter\Http\Service\ConfigService;
 use Fusio\Engine\Exception\ConfigurationException;
+use Paganini\ServiceDiscovery\ServiceUriList;
 use Predis\Client as PredisClient;
 
 class ServiceRegister
@@ -22,7 +23,6 @@ class ServiceRegister
     private PredisClient $cache;
 
     /**
-     * @throws ConfigurationException
      */
     private function __construct()
     {
@@ -52,8 +52,8 @@ class ServiceRegister
     }
 
     /**
-     * Parse a comma-separated list of service uris, remove empty entries and return one random uri.
-     * Throws ConfigurationException if the resulting list is empty.
+     * Parse a comma-separated list of service uris (Fusio-compatible) and return one random uri.
+     * Delegates to {@see ServiceUriList}.
      *
      * @param string $serviceUries
      * @return string
@@ -61,16 +61,11 @@ class ServiceRegister
      */
     private function pickServiceUriFromString(string $serviceUries): string
     {
-        $serviceUriList = explode(',', $serviceUries);
-        // remove empty elements and trim values
-        $serviceUriList = array_values(array_filter(array_map('trim', $serviceUriList), function (string $v): bool {
-            return $v !== '';
-        }));
-
-        if (empty($serviceUriList)) {
+        $serviceUriList = ServiceUriList::parseCommaSeparated($serviceUries);
+        if ($serviceUriList === []) {
             throw new ConfigurationException('Empty from parsing: ' . $serviceUries);
         }
 
-        return $serviceUriList[array_rand($serviceUriList)];
+        return ServiceUriList::pickRandom($serviceUriList);
     }
 }

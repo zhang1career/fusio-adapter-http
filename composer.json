@@ -11,15 +11,22 @@
       "homepage": "https://chrisk.app"
     }
   ],
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/zhang1career/paganini.git"
+    }
+  ],
   "require": {
-    "php": ">=8.1",
+    "php": "^8.2",
     "fusio/engine": "^6.0",
     "guzzlehttp/guzzle": "^7.0",
     "kevinrob/guzzle-cache-middleware": "^5.1",
     "twig/twig": "^3.0",
     "symfony/dotenv": "^7.1",
     "predis/predis": "^2.1",
-    "doctrine/cache": "^1.13"
+    "doctrine/cache": "^1.13",
+    "zhang1career/paganini": "^0.4"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.0",

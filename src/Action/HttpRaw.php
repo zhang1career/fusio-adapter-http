@@ -30,6 +30,9 @@ use Fusio\Engine\Request\HttpRequestContext;
 use Fusio\Engine\RequestInterface;
 use PSX\Http\Environment\HttpResponseInterface;
 use Twig\Environment;
+use Twig\Error\LoaderError;
+use Twig\Error\RuntimeError;
+use Twig\Error\SyntaxError;
 use Twig\Loader\ArrayLoader;
 
 /**
@@ -55,6 +58,9 @@ class HttpRaw extends HttpSenderAbstract
     }
 
 
+    /**
+     * @throws ConfigurationException
+     */
     public function handle(RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): HttpResponseInterface
     {
         $url = $configuration->get('url');
@@ -81,7 +87,12 @@ class HttpRaw extends HttpSenderAbstract
         $builder->add($elementFactory->newTextArea('body', 'Body', 'text', 'The HTTP body'));
     }
 
-    protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration): array
+    /**
+     * @throws RuntimeError
+     * @throws SyntaxError
+     * @throws LoaderError
+     */
+    protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): array
     {
         $headers = $configuration->get('headers');
         if (!is_array($headers)) {
