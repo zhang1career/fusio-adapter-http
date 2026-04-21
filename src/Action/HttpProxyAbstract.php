@@ -83,6 +83,10 @@ abstract class HttpProxyAbstract extends HttpSenderAbstract
 
     private function isOperationUsabilityExternal(ContextInterface $context): bool
     {
+        if ($context->getOperationUsability() === self::USABILITY_EXTERNAL) {
+            return true;
+        }
+
         if (!method_exists($context, 'getOperation')) {
             return false;
         }

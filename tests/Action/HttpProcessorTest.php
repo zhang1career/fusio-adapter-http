@@ -44,7 +44,7 @@ use PSX\Record\Record;
  *
  * @author  Christoph Kappestein <christoph.kappestein@gmail.com>
  * @license http://www.apache.org/licenses/LICENSE-2.0
- * @link    https://www.fusio-project.org/
+ * @link    https://www.fusio-project.org
  */
 class HttpProcessorTest extends HttpActionTestCase
 {
@@ -134,16 +134,6 @@ class HttpProcessorTest extends HttpActionTestCase
             points: 100,
         );
 
-        return new class(34, 'http://127.0.0.1', $app, $user) extends Context {
-            public function getOperation(): ?object
-            {
-                return new class {
-                    public function getUsability(): int
-                    {
-                        return 1;
-                    }
-                };
-            }
-        };
+        return new Context(34, 'http://127.0.0.1', $app, $user, null, 1);
     }
 }

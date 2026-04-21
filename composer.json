@@ -11,15 +11,9 @@
       "homepage": "https://chrisk.app"
     }
   ],
-  "repositories": [
-    {
-      "type": "vcs",
-      "url": "https://github.com/zhang1career/paganini.git"
-    }
-  ],
   "require": {
     "php": "^8.2",
-    "fusio/engine": "^6.0",
+    "fusio/engine": "~6.6.1.0",
     "guzzlehttp/guzzle": "^7.0",
     "kevinrob/guzzle-cache-middleware": "^5.1",
     "twig/twig": "^3.0",
@@ -33,6 +27,16 @@
     "vimeo/psalm": "^5.9",
     "mikey179/vfsstream": "^1.6"
   },
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/zhang1career/fusio-engine.git"
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/zhang1career/paganini.git"
+    }
+  ],
   "autoload": {
     "psr-4": {
       "Fusio\\Adapter\\Http\\": "src/"
