@@ -87,6 +87,9 @@ abstract class HttpSenderAbstract extends ActionAbstract
         'upgrade',
     ];
 
+    /** Strip upstream CORS; outer PSX/Fusio CORS must own Access-Control-* to avoid duplicate values */
+    protected const CORS_HEADER_PREFIX = 'access-control-';
+
     private ?Client $client = null;
 
     public function setClient(Client $client): void
@@ -161,6 +164,12 @@ abstract class HttpSenderAbstract extends ActionAbstract
 
         foreach (self::HOP_BY_HOP_HEADERS as $headerName) {
             if ($response->hasHeader($headerName)) {
+                $response = $response->withoutHeader($headerName);
+            }
+        }
+
+        foreach (array_keys($response->getHeaders()) as $headerName) {
+            if (str_starts_with(strtolower($headerName), self::CORS_HEADER_PREFIX)) {
                 $response = $response->withoutHeader($headerName);
             }
         }

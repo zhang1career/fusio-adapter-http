@@ -104,6 +104,61 @@ class HttpProcessorTest extends HttpActionTestCase
         $this->assertEquals($headers, $this->getXHeaders($transaction['request']->getHeaders()));
     }
 
+    public function testUpstreamCorsHeadersStripped(): void
+    {
+        $transactions = [];
+        $history = Middleware::history($transactions);
+
+        $mock = new MockHandler([
+            new Response(200, [
+                'X-Foo' => 'Foo',
+                'Access-Control-Allow-Origin' => '*',
+                'Access-Control-Allow-Credentials' => 'true',
+                'access-control-allow-methods' => 'GET, POST',
+                'Access-Control-Allow-Headers' => 'Authorization',
+                'Access-Control-Expose-Headers' => 'X-Trace',
+                'Access-Control-Max-Age' => '600',
+                'Access-Control-Private-Network' => 'true',
+                'Content-Type' => 'application/json',
+            ], json_encode(['ok' => true])),
+        ]);
+
+        $handler = HandlerStack::create($mock);
+        $handler->push($history);
+        $client = new Client(['handler' => $handler]);
+
+        $action = $this->getActionFactory()->factory($this->getActionClass());
+        if ($action instanceof HttpSenderAbstract) {
+            $action->setClient($client);
+        }
+
+        $url = 'http://127.0.0.1';
+        $response = $this->handle(
+            $action,
+            $this->getRequest(
+                'GET',
+                ['foo' => 'bar'],
+                ['foo' => 'bar'],
+                ['Content-Type' => 'application/json'],
+                Record::fromArray(['foo' => 'bar'])
+            ),
+            $this->getParameters($this->getConfiguration($url)),
+            $this->getContext()
+        );
+
+        $this->assertEquals(200, $response->getStatusCode());
+
+        foreach (array_keys($response->getHeaders()) as $name) {
+            $this->assertFalse(
+                str_starts_with(strtolower($name), 'access-control-'),
+                sprintf('Upstream CORS header %s must not appear on the outbound response.', $name)
+            );
+        }
+        $this->assertSame(['x-foo' => ['Foo']], $response->getHeaders());
+
+        $this->assertEquals(1, count($transactions));
+    }
+
     protected function getActionClass(): string
     {
         return HttpProcessor::class;
