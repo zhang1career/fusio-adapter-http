@@ -27,6 +27,7 @@ use Fusio\Adapter\Http\Service\ConfigService;
 use Fusio\Engine\ActionAbstract;
 use Fusio\Engine\ContextInterface;
 use Fusio\Engine\ParametersInterface;
+use Fusio\Engine\Request\HttpRequestContext;
 use Fusio\Engine\RequestInterface;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -131,7 +132,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
             }
         }
 
-        $options = $this->getRequestOptions($config, $headers, $query, $payload);
+        $options = $this->getRequestOptions($config, $headers, $query, $payload, $request);
 
         $guzzleOptions = [];
         if ($config->shouldCache()) {
@@ -195,7 +196,7 @@ abstract class HttpSenderAbstract extends ActionAbstract
 
     abstract protected function getRequestValues(RequestConfig $config, RequestInterface $request, ParametersInterface $configuration, ContextInterface $context): array;
 
-    private function getRequestOptions(RequestConfig $config, array $headers, ?array $query, mixed $payload): array
+    private function getRequestOptions(RequestConfig $config, array $headers, ?array $query, mixed $payload, RequestInterface $fusioEngineRequest): array
     {
         $configuredQuery = $config->getQuery();
         if (!empty($configuredQuery)) {
@@ -217,11 +218,73 @@ abstract class HttpSenderAbstract extends ActionAbstract
             $options['form_params'] = $payload instanceof JsonSerializable ? Transformer::toArray($payload) : null;
         } elseif ($config->getType() == self::TYPE_BINARY) {
             $options['body'] = $payload;
+        } elseif ($this->shouldSendProxiedOpaqueBodyInsteadOfJson($config, $payload, $fusioEngineRequest)) {
+            $opaqueContentTypeLine = $this->opaqueInboundContentTypeLine($fusioEngineRequest);
+            if ($opaqueContentTypeLine !== '') {
+                $headers['content-type'] = $opaqueContentTypeLine;
+                $options['headers'] = $headers;
+            }
+            $options['body'] = $payload;
         } else {
             $options['json'] = $payload;
         }
 
         return $options;
+    }
+
+    /**
+     * Proxied PUT/POST opaque bodies (binary, images, etc.) are read as UTF-8-unsafe strings. Guzzle {@code json} would
+     * call json_encode and fail — use raw body plus inbound Content-Type when the client sent a typical binary MIME type.
+     */
+    private function shouldSendProxiedOpaqueBodyInsteadOfJson(RequestConfig $config, mixed $payload, RequestInterface $fusioEngineRequest): bool
+    {
+        if (! is_string($payload)) {
+            return false;
+        }
+        if ($config->getType() === self::TYPE_FORM || $config->getType() === self::TYPE_BINARY) {
+            return false;
+        }
+
+        return $this->opaqueInboundMimeType($fusioEngineRequest) !== null;
+    }
+
+    private function opaqueInboundContentTypeLine(RequestInterface $fusioEngineRequest): string
+    {
+        $ctx = $fusioEngineRequest->getContext();
+        if (!$ctx instanceof HttpRequestContext) {
+            return '';
+        }
+
+        return trim((string) $ctx->getRequest()->getHeader('Content-Type'));
+    }
+
+    /**
+     * @return string|null Mime type after parsing (opaque body), lowercase.
+     */
+    private function opaqueInboundMimeType(RequestInterface $fusioEngineRequest): ?string
+    {
+        $line = $this->opaqueInboundContentTypeLine($fusioEngineRequest);
+        if ($line === '') {
+            return null;
+        }
+
+        $semicolon = strpos($line, ';');
+        $mime = strtolower(trim(false !== $semicolon ? substr($line, 0, $semicolon) : $line));
+        if ($mime === '') {
+            return null;
+        }
+
+        if ($mime === 'application/octet-stream') {
+            return $mime;
+        }
+
+        foreach (['image/', 'video/', 'audio/'] as $prefix) {
+            if (str_starts_with($mime, $prefix)) {
+                return $mime;
+            }
+        }
+
+        return null;
     }
 
     private function isJson(?string $contentType): bool
